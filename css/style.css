@@ -468,5 +468,7 @@ body.player-view .player-only { display: block; }
 .tip-hint { color: var(--accent); margin-top: 4px; }
 .gm-note { color: #ffb3c1; }
 @media (max-width: 820px) {
-  #starmapPanel { top: auto; bottom: 8px; left: 8px; right: 8px; width: auto; max-height: 40%; }
+  #starmapPanel { top: auto; bottom: 8px; left: 8px; right: 8px; width: auto; max-height: 40%; padding: 8px 10px; }
+  #starmapPanel p { display: none; }
+  .sm-buttons { margin: 6px 0; }
 }

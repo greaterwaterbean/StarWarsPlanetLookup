@@ -75,7 +75,7 @@ export function renderPlanetsPanel(el, app) {
         bySector.get(key).push(p);
       }
       const sectors = [...bySector.keys()].sort((a, b) => (a === '') - (b === '') || a.localeCompare(b));
-      const open = !!q || !app.ui.collapsed.has(region);
+      const open = !!q || app.ui.expanded.has(region);
       const details = h('details', { class: 'planet-group', open },
         h('summary', { class: 'planet-group-title' },
           h('span', {}, region),
@@ -96,8 +96,8 @@ export function renderPlanetsPanel(el, app) {
       );
       details.addEventListener('toggle', () => {
         if (q) return;
-        if (details.open) app.ui.collapsed.delete(region);
-        else app.ui.collapsed.add(region);
+        if (details.open) app.ui.expanded.add(region);
+        else app.ui.expanded.delete(region);
       });
       list.append(details);
     }

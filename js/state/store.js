@@ -38,6 +38,7 @@ export function canonDefault(id) {
     seed: src.id,
     cells: DEFAULT_CELLS,
     params: { ...(src.params || {}) },
+    palette: src.palette ? { ...src.palette } : undefined,
     map: src.map ? { ...src.map } : null,
     edits: emptyEdits(),
     regions: [],

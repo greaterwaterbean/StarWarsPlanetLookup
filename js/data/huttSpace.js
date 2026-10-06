@@ -154,5 +154,28 @@ export const BOOTANA_HUTTA_PLANETS = [
   },
 ];
 
+// Extra details for a few researched worlds, added by hand. Locations are
+// merged with the researched ones; other fields replace them.
+const EXTRAS = {
+  narshaddaa: {
+    origin: 'Wookieepedia (canon and Legends), via search summaries; districts from the Legends novels and games',
+    locations: [
+      { name: 'Corellian Sector', type: 'city', lat: 12, lon: 30, notes: 'A smugglers\' district of the vertical city.' },
+      { name: 'Refugee Sector', type: 'town', lat: -8, lon: 70, notes: 'Overcrowded slums where refugees from the wars ended up.' },
+      { name: 'Jekk\'Jekk Tarr', type: 'cantina', lat: -6, lon: 74, notes: 'A cantina whose air is unbreathable for most species, which suits its patrons.' },
+      { name: 'The Promenade', type: 'cantina', lat: 20, lon: -40, notes: 'Casinos, clubs and markets under the neon.' },
+    ],
+  },
+  korgorensla: {
+    palette: { gas_1: '#d8f5b8', gas_2: '#a9dc84', gas_3: '#78bb5f', gas_4: '#52954a', gas_5: '#356e36', gas_storm: '#efffdf' },
+  },
+};
+
+const research = HUTT_SPACE_RESEARCH.map((p) => {
+  const extra = EXTRAS[p.id];
+  if (!extra) return p;
+  return { ...p, ...extra, locations: [...p.locations, ...(extra.locations || [])] };
+});
+
 // Everything in Hutt Space, with star map positions worked out.
-export const HUTT_SPACE_PLANETS = resolvePlacements([...BOOTANA_HUTTA_PLANETS, ...HUTT_SPACE_RESEARCH]);
+export const HUTT_SPACE_PLANETS = resolvePlacements([...BOOTANA_HUTTA_PLANETS, ...research]);

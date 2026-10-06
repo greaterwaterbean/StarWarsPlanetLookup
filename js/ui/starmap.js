@@ -159,12 +159,15 @@ export class StarMap {
     const panel = document.getElementById('starmapPanel');
     const wide = this.width > 820 && panel;
     const left = wide ? panel.offsetLeft + panel.offsetWidth : 0;
-    const availW = Math.max(200, this.width - left - pad * 2);
-    const availH = Math.max(200, this.height - pad * 2);
+    // On phones the panel sits at the bottom instead.
+    const bottom = !wide && panel ? panel.offsetHeight + 16 : 0;
+    const availW = Math.max(160, this.width - left - pad * 2);
+    const availH = Math.max(160, this.height - bottom - pad * 2);
     const s = Math.max(0.15, Math.min(1.8, availW / Math.max(1, x1 - x0), availH / Math.max(1, y1 - y0)));
     // Center of the free area, converted back to a camera center.
     const freeCx = left + pad + availW / 2;
-    this.cam = { s, x: (x0 + x1) / 2 - (freeCx - this.width / 2) / s, y: (y0 + y1) / 2 };
+    const freeCy = pad + availH / 2;
+    this.cam = { s, x: (x0 + x1) / 2 - (freeCx - this.width / 2) / s, y: (y0 + y1) / 2 - (freeCy - this.height / 2) / s };
   }
 
   fitAll() {

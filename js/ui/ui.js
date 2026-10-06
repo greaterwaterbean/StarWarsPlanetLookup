@@ -31,7 +31,8 @@ export class UI {
     this.planetQuery = '';
     this.placeQuery = '';
     this.placeType = '';
-    this.collapsed = new Set();
+    // Regions open in the planet list. The current planet's region always opens.
+    this.expanded = new Set();
     this.panels = {};
     this.toastTimer = null;
   }
@@ -99,6 +100,7 @@ export class UI {
 
   // ---------- Change notifications from the app ----------
   onPlanetChanged() {
+    if (this.app.planet) this.expanded.add(this.app.planet.region);
     this.renderAll();
     this.updateTitle();
     renderInspector(this.app);
