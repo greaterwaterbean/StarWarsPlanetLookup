@@ -107,7 +107,7 @@ export const STAR_MAPS = [
       },
       { name: 'Pabol Sleheyron', style: 'major', notes: 'Crosses Hutt Space from the Si\'Klaata Cluster through Sleheyron toward Kessel.', path: ['kintan', 'sleheyron', 'ulmatra', grid('T-9', 0.9, 0.6)] },
       { name: '', style: 'minor', path: ['nimban', 'sleheyron'] },
-      { name: 'Ootmian Pabol', style: 'major', notes: 'The Outlanders\' Route, from Nal Hutta out toward Kwenn and the Core.', path: ['nalhutta', 'narhekka', 'duhutta', 'irith', 'narbosholla', 'keldooine', grid('R-11', -0.2, 0.5)] },
+      { name: 'Ootmian Pabol', style: 'major', notes: 'The Outlanders\' Route, from Nal Hutta past Keldooine (a shadowport on the edge of Hutt Space) toward Kwenn and the Core.', path: ['nalhutta', 'narhekka', 'duhutta', 'irith', 'narbosholla', grid('R-11', 0.2, 0.5), grid('R-11', -0.2, 0.5)] },
       { name: 'Pabol Kreeta', style: 'minor', path: ['narkreeta', 'narbosholla'] },
       { name: 'Shag Pabol', style: 'major', notes: 'The Slave Road: Nal Hutta to Ylesia and on toward Teth.', path: ['kiskua', 'rorak', 'diyu', 'ylesia', 'ziugen', grid('T-12', 0.95, 0.9)] },
       { name: 'Oktos Route', style: 'minor', path: ['nalhutta', 'kleeva', 'toydaria', 'tolamn'] },

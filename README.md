@@ -6,8 +6,8 @@ A pixel-art planet atlas for Star Wars tabletop games. Spin a globe, zoom into i
 
 ## What it does
 
-- **48 Star Wars planets ready to go.** Tatooine, Coruscant, Naboo, Hoth, Endor, Bespin, Mustafar and more, each with key locations such as Mos Eisley, the Jedi Temple, Echo Base and Cloud City.
-- **A planet type database.** 19 types (desert, ice, ocean, volcanic, city world, gas giant, fungal, dark side and others). Pick a type, roll a seed, tweak sliders, and a whole planet is generated in a fraction of a second.
+- **154 Star Wars planets ready to go.** 48 famous worlds (Tatooine, Coruscant, Naboo, Hoth, Bespin, Mustafar and more) with key locations such as Mos Eisley, the Jedi Temple and Cloud City, plus 106 worlds of Hutt Space, including every Bootana Hutta world from your campaign notes.
+- **A planet type database.** 22 types (desert, ice, ocean, volcanic, city world, gas giant, fungal, dark side, polluted, toxic, belt world and others). Pick a type, roll a seed, tweak sliders, and a whole planet is generated in a fraction of a second.
 - **Azgaar-style cells.** Each planet is made of 5,000 to 80,000 cells. Zoom in and turn on the cell grid (G) to see them.
 - **Pixelated rendering.** The globe is drawn pixel by pixel at low resolution, then scaled up. Pixel size 1 gives a smooth look.
 - **Places.** Add cities, spaceports, bases, temples, cantinas, wrecks and more. Each one has a public description, private GM notes and a "secret" switch.
