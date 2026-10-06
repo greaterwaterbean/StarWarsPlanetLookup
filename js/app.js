@@ -14,8 +14,12 @@ import { History, restoreSnapshot } from './state/history.js';
 import { BIOMES, hexToRgb } from './data/biomes.js';
 import { getLocationType } from './data/locationTypes.js';
 import { UI } from './ui/ui.js';
+import { StarMap } from './ui/starmap.js';
 import { bindControls } from './controls.js';
 import { download, slug } from './ui/dom.js';
+import { renderFlatMap } from './render/flatMap.js';
+import { foundryScene, foundryJournal, foundryReadme, exportedLocations } from './foundry.js';
+import { makeZip } from './state/zip.js';
 
 export const DEFAULT_LAYERS = {
   shading: true,
@@ -111,20 +115,27 @@ export class App {
 
     this.ui = new UI(this);
     this.ui.init();
+    this.starmap = new StarMap(this);
     bindControls(this);
 
     new ResizeObserver(() => this.resize()).observe(this.stage);
     this.resize();
 
+    const initialHash = location.hash;
     const fromHash = this.planetIdFromHash();
     const candidates = [fromHash, s.lastPlanetId, 'tatooine'];
     let id = candidates.find((c) => c && this.store.getPlanet(c) && !this.store.data.deletedCanon.includes(c));
     if (!id) id = this.store.listPlanets()[0]?.id;
     if (id) this.selectPlanet(id);
+    this.openMapFromHash(initialHash);
 
     window.addEventListener('hashchange', () => {
       const hid = this.planetIdFromHash();
-      if (hid && hid !== this.planet?.id && this.store.getPlanet(hid)) this.selectPlanet(hid);
+      if (hid && hid !== this.planet?.id && this.store.getPlanet(hid)) {
+        this.starmap.close();
+        this.selectPlanet(hid);
+      }
+      this.openMapFromHash();
     });
     window.addEventListener('beforeunload', () => {
       this.commitEdit();
@@ -141,6 +152,21 @@ export class App {
   planetIdFromHash() {
     const m = /planet=([^&]+)/.exec(location.hash);
     return m ? decodeURIComponent(m[1]) : null;
+  }
+
+  // Links like #map=hutt-space&area=bootana-hutta open the star map.
+  openMapFromHash(hash = location.hash) {
+    const m = /map=([^&]+)/.exec(hash);
+    if (!m) return;
+    const area = /area=([^&]+)/.exec(hash);
+    const mapId = decodeURIComponent(m[1]);
+    const areaId = area ? decodeURIComponent(area[1]) : null;
+    if (this.starmap.isOpen && this.starmap.mapId === mapId) return;
+    this.starmap.open(mapId, { area: areaId });
+  }
+
+  planetLink(id = this.planet?.id) {
+    return `${location.origin}${location.pathname}#planet=${encodeURIComponent(id)}`;
   }
 
   // ---------- Planets ----------
@@ -252,6 +278,7 @@ export class App {
 
   createPlanet(opts) {
     const planet = this.store.addPlanet(newPlanet(opts));
+    this.starmap.close();
     this.selectPlanet(planet.id);
     this.ui.showTab('planet');
     this.toast(`Created ${planet.name}`);
@@ -808,6 +835,55 @@ export class App {
     ctx.drawImage(this.globeCanvas, 0, 0, gw * this.dpr, gh * this.dpr);
     ctx.drawImage(this.overlay, 0, 0);
     c.toBlob((blob) => blob && download(`${slug(this.planet.name)}.png`, blob));
+  }
+
+  flatMapCanvas({ width = 4096, pixel = 4, bakeLabels = false, includeSecret = false } = {}) {
+    return renderFlatMap(this.world, {
+      width,
+      pixel,
+      relief: this.layers.relief,
+      coast: this.layers.coast,
+      grid: this.layers.grid,
+      regions: this.layers.regions,
+      clouds: false,
+      regionColors: this.planet.regions.map((r) => hexToRgb(r.color)),
+      labels: bakeLabels ? exportedLocations(this.planet, includeSecret) : null,
+    });
+  }
+
+  exportFlatMap(options) {
+    const canvas = this.flatMapCanvas(options);
+    canvas.toBlob((blob) => blob && download(`${slug(this.planet.name)}-map.png`, blob));
+  }
+
+  // Zip with a flat map image, a Foundry scene, a journal and the planet data.
+  async exportFoundry(options) {
+    const { width = 4096, pixel = 4, includeSecret = false, includeGmNotes = false, bakeLabels = false, folder = 'planet-lookup', globeUrl = '', embedGlobe = false } = options;
+    const planet = this.planet;
+    const name = slug(planet.name);
+    const canvas = this.flatMapCanvas({ width, pixel, bakeLabels, includeSecret });
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('Could not create the map image (it may be too large for this browser).');
+    const png = new Uint8Array(await blob.arrayBuffer());
+    const cleanFolder = folder.trim().replace(/^\/+|\/+$/g, '') || 'planet-lookup';
+    const files = { image: `${name}-map.png`, scene: `${name}-scene.json`, journal: `${name}-journal.json`, planet: `${name}.planet.json` };
+    const imagePath = `${cleanFolder}/${files.image}`;
+    const planetData = this.store.exportData([planet]).planets[0];
+    if (!includeSecret) planetData.locations = planetData.locations.filter((l) => !l.secret);
+    if (!includeGmNotes) {
+      planetData.gmNotes = '';
+      planetData.locations.forEach((l) => { l.gmNotes = ''; });
+    }
+    const scene = foundryScene(planet, { width: canvas.width, height: canvas.height, imagePath, includeSecret, planetData });
+    const journal = foundryJournal(planet, { includeSecret, includeGmNotes, globeUrl, embedGlobe });
+    const zip = makeZip([
+      { name: files.image, data: png },
+      { name: files.scene, data: JSON.stringify(scene, null, 2) },
+      { name: files.journal, data: JSON.stringify(journal, null, 2) },
+      { name: files.planet, data: JSON.stringify(this.store.exportData([planet]), null, 2) },
+      { name: 'README.txt', data: foundryReadme(planet, files, imagePath) },
+    ]);
+    download(`${name}-foundry.zip`, new Blob([zip], { type: 'application/zip' }));
   }
 
   toast(message, kind = 'info') {

@@ -9,6 +9,7 @@ import { RESOLUTIONS } from '../core/generator.js';
 import { randomSeed } from '../core/rng.js';
 import { GEN_PARAMS, DEFAULT_GEN, CUSTOM_TYPE_TEMPLATE } from '../data/planetTypes.js';
 import { REGIONS } from '../data/canonPlanets.js';
+import { STAR_MAPS } from '../data/starMaps.js';
 import { BIOMES, rgbToHex } from '../data/biomes.js';
 import { LOCATION_TYPES, getLocationType } from '../data/locationTypes.js';
 
@@ -27,18 +28,33 @@ export function renderPlanetsPanel(el, app) {
   });
   fill(el,
     h('div', { class: 'stack' },
-      h('button', { class: 'btn primary block gm-only', icon: 'plus', onclick: () => openNewPlanetDialog(app) }, 'New planet'),
+      h('div', { class: 'row' },
+        h('button', { class: 'btn primary grow gm-only', icon: 'plus', onclick: () => openNewPlanetDialog(app) }, 'New planet'),
+        STAR_MAPS.length ? h('button', { class: 'btn grow', icon: 'map', onclick: () => { app.starmap.toggle(); app.ui.closeMobileMenu(); } }, 'Star map (S)') : null,
+      ),
       search,
     ),
     h('div', { class: 'spacer' }),
     list,
   );
 
+  function mapButton(label, onclick) {
+    return h('button', {
+      class: 'btn small map-link', icon: 'map', title: `Open ${label} on the star map`,
+      onclick: (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onclick();
+        app.ui.closeMobileMenu();
+      },
+    }, 'Map');
+  }
+
   function renderList() {
     const q = app.ui.planetQuery.trim().toLowerCase();
     const planets = app.store.listPlanets().filter((p) => {
       if (!q) return true;
-      return [p.name, p.region, getType(p.typeId).name].some((s) => String(s).toLowerCase().includes(q));
+      return [p.name, p.region, p.sector, getType(p.typeId).name].some((s) => String(s || '').toLowerCase().includes(q));
     });
     const groups = new Map();
     for (const p of planets) {
@@ -50,11 +66,40 @@ export function renderPlanetsPanel(el, app) {
     for (const region of order) {
       const items = groups.get(region);
       if (!items) continue;
-      items.sort((a, b) => a.name.localeCompare(b.name));
-      list.append(h('div', { class: 'planet-group' },
-        h('div', { class: 'planet-group-title' }, region),
-        items.map((p) => planetItem(p)),
-      ));
+      const map = STAR_MAPS.find((m) => m.name === region);
+      // Sectors inside the region; planets without one go last.
+      const bySector = new Map();
+      for (const p of items) {
+        const key = p.sector || '';
+        if (!bySector.has(key)) bySector.set(key, []);
+        bySector.get(key).push(p);
+      }
+      const sectors = [...bySector.keys()].sort((a, b) => (a === '') - (b === '') || a.localeCompare(b));
+      const open = !!q || !app.ui.collapsed.has(region);
+      const details = h('details', { class: 'planet-group', open },
+        h('summary', { class: 'planet-group-title' },
+          h('span', {}, region),
+          h('span', { class: 'count' }, String(items.length)),
+          map ? mapButton(region, () => app.starmap.open(map.id)) : null,
+        ),
+        sectors.map((sector) => {
+          const ps = bySector.get(sector).sort((a, b) => a.name.localeCompare(b.name));
+          const area = sector && map ? (map.areas || []).find((a) => a.name === sector) : null;
+          return [
+            sector || sectors.length > 1 ? h('div', { class: 'sector-title' },
+              h('span', {}, sector || 'Elsewhere'),
+              area ? mapButton(sector, () => app.starmap.open(map.id, { area: area.id })) : null,
+            ) : null,
+            ps.map((pl) => planetItem(pl)),
+          ];
+        }),
+      );
+      details.addEventListener('toggle', () => {
+        if (q) return;
+        if (details.open) app.ui.collapsed.delete(region);
+        else app.ui.collapsed.add(region);
+      });
+      list.append(details);
     }
     if (!planets.length) list.append(h('p', { class: 'muted' }, 'No planets match.'));
   }
@@ -126,9 +171,30 @@ export function renderPlanetPanel(el, app) {
   // Players see a read-only summary.
   const summary = h('div', { class: 'player-only' },
     h('h2', {}, p.name),
-    h('p', { class: 'muted' }, `${p.region} / ${type.name} / ${p.diameter.toLocaleString()} km`),
+    h('p', { class: 'muted' }, [p.region, p.sector, type.name, `${p.diameter.toLocaleString()} km`].filter(Boolean).join(' / ')),
     p.description ? h('p', {}, p.description) : null,
   );
+
+  // A direct link to this planet, and its spot on the star map.
+  const links = h('div', { class: 'row', style: { flexWrap: 'wrap', marginBottom: '10px' } },
+    h('button', {
+      class: 'btn small', icon: 'link', title: 'Copy a link that opens this planet directly',
+      onclick: async () => {
+        const url = app.planetLink();
+        try {
+          await navigator.clipboard.writeText(url);
+          app.toast('Link copied');
+        } catch {
+          window.prompt('Copy this link:', url);
+        }
+      },
+    }, 'Copy link'),
+    p.map && STAR_MAPS.some((m) => m.id === p.map.id) ? h('button', {
+      class: 'btn small', icon: 'map',
+      onclick: () => app.starmap.open(p.map.id, { planetId: p.id }),
+    }, 'Show on star map') : null,
+  );
+  const origin = p.origin ? h('p', { class: 'small muted' }, `Source: ${p.origin}`) : null;
 
   const textInput = (key, props = {}) => h('input', {
     type: 'text',
@@ -268,6 +334,11 @@ export function renderPlanetPanel(el, app) {
       h('div', { class: 'grow' }, field('Region', regionSelect)),
       h('div', { style: { width: '120px' } }, field('Diameter (km)', diameter)),
     ),
+    field('Sector', h('input', {
+      type: 'text', value: p.sector || '', placeholder: 'e.g. Bootana Hutta', 'aria-label': 'Sector',
+      oninput: (e) => { app.beginEdit(); p.sector = e.target.value; },
+      onchange: () => { app.commitEdit(); app.ui.updateTitle(); app.ui.renderPlanets(); },
+    })),
     field('Description (players see this)', textArea('description', 'What travelers know about this world')),
     field('GM notes (hidden in player view)', textArea('gmNotes', 'Secrets, plot hooks, faction notes')),
 
@@ -294,7 +365,7 @@ export function renderPlanetPanel(el, app) {
     ),
   );
 
-  fill(el, summary, gm, h('h2', {}, 'Surface'), stats, actions);
+  fill(el, summary, links, origin, gm, h('h2', {}, 'Surface'), stats, actions);
   updatePlanetStats(app);
 }
 
@@ -626,6 +697,8 @@ export function renderDataPanel(el, app) {
       fileInput,
     ),
 
+    foundrySection(app),
+
     h('h2', {}, 'Custom planet types'),
     h('p', { class: 'small muted' }, 'Add your own entries to the planet type database as JSON. Each needs an id, a name and biome rules (see README). Built-in types stay as they are.'),
     typesText,
@@ -665,5 +738,56 @@ export function renderDataPanel(el, app) {
         },
       }, 'Erase all saved data'),
     ),
+  );
+}
+
+// Foundry VTT export options. Remembered between visits.
+function foundrySection(app) {
+  const saved = { width: 4096, pixel: 4, includeSecret: false, includeGmNotes: false, bakeLabels: false, folder: 'planet-lookup', embedGlobe: false, ...(app.store.settings.foundry || {}) };
+  const online = /^https?:$/.test(location.protocol) && !/^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname);
+  const opts = { ...saved, globeUrl: online ? app.planetLink() : '' };
+  const remember = () => {
+    const { globeUrl, ...keep } = opts;
+    app.store.setSetting('foundry', keep);
+  };
+  const select = (key, choices) => h('select', {
+    onchange: (e) => { opts[key] = +e.target.value; remember(); },
+  }, choices.map(([v, label]) => h('option', { value: v, selected: v === opts[key] }, label)));
+  const check = (key, label) => h('label', { class: 'toggle' },
+    h('input', { type: 'checkbox', checked: opts[key], onchange: (e) => { opts[key] = e.target.checked; remember(); } }),
+    label,
+  );
+  const run = async (btn, fn) => {
+    btn.disabled = true;
+    const old = btn.textContent;
+    btn.textContent = 'Working...';
+    await new Promise((r) => setTimeout(r, 30));
+    try {
+      await fn();
+      app.toast('Download started');
+    } catch (err) {
+      app.toast(`Export failed: ${err.message}`, 'error');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = old;
+    }
+  };
+  const pkgBtn = h('button', { class: 'btn primary block', icon: 'disk', onclick: () => run(pkgBtn, () => app.exportFoundry(opts)) }, 'Download Foundry package (.zip)');
+  const pngBtn = h('button', { class: 'btn block', icon: 'image', onclick: () => run(pngBtn, () => app.exportFlatMap(opts)) }, 'Download flat map image only');
+  return h('div', {},
+    h('h2', {}, 'Foundry VTT (v12 to v14)'),
+    h('p', { class: 'small muted' }, 'A zip with a flat map image, a Foundry scene with map notes for your places, a journal and the planet data. The README inside explains the import.'),
+    h('div', { class: 'row' },
+      h('div', { class: 'grow' }, field('Map width', select('width', [[2048, '2048 x 1024'], [4096, '4096 x 2048'], [8192, '8192 x 4096']]))),
+      h('div', { class: 'grow' }, field('Pixel size', select('pixel', [[8, 'Chunky (8)'], [4, 'Pixel (4)'], [2, 'Fine (2)'], [1, 'Smooth (1)']]))),
+    ),
+    check('includeSecret', 'Include secret places (players will see them)'),
+    check('includeGmNotes', 'Include GM notes in the journal'),
+    check('bakeLabels', 'Draw place labels onto the image'),
+    field('Foundry folder for the image', h('input', { type: 'text', value: opts.folder, oninput: (e) => { opts.folder = e.target.value; remember(); } })),
+    field('Link to the interactive globe (optional)', h('input', { type: 'text', value: opts.globeUrl, placeholder: 'https://you.github.io/StarWarsPlanetLookup/#planet=...', oninput: (e) => { opts.globeUrl = e.target.value.trim(); } }),
+      'Added to the journal. Fills in by itself when the app is hosted online, for example on GitHub Pages.'),
+    check('embedGlobe', 'Also embed the globe in the journal'),
+    h('div', { class: 'stack' }, pkgBtn, pngBtn),
   );
 }

@@ -9,6 +9,8 @@
 // Diameters (km) are rough reference values for distance measuring. Change them
 // in the planet editor if your campaign uses different numbers.
 
+import { HUTT_SPACE_PLANETS } from './huttSpace.js';
+
 export const REGIONS = [
   'Deep Core',
   'Core Worlds',
@@ -17,12 +19,13 @@ export const REGIONS = [
   'Expansion Region',
   'Mid Rim',
   'Outer Rim',
+  'Hutt Space',
   'Wild Space',
   'Unknown Regions',
   'Homebrew',
 ];
 
-export const CANON_PLANETS = [
+const CORE_PLANETS = [
   {
     id: 'tatooine', name: 'Tatooine', region: 'Outer Rim', typeId: 'desert', diameter: 10465,
     description: 'A harsh desert world under twin suns, run by Hutt crime lords. Moisture farmers, Jawas and Tusken Raiders share the sand.',
@@ -428,3 +431,6 @@ export const CANON_PLANETS = [
     locations: [],
   },
 ];
+
+// Everything that ships with the app: the planets above plus Hutt Space (huttSpace.js).
+export const CANON_PLANETS = [...CORE_PLANETS, ...HUTT_SPACE_PLANETS];

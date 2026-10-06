@@ -6,11 +6,17 @@ import { REGIONS } from '../data/canonPlanets.js';
 import { randomSeed } from '../core/rng.js';
 import { getType } from '../core/types.js';
 
-export function openNewPlanetDialog(app) {
+// `prefill` can set name, region, sector and a star map position (used when
+// you click an uncharted system on the star map).
+export function openNewPlanetDialog(app, prefill = {}) {
   const dlg = $('#newPlanetDialog');
   let typeId = 'temperate';
-  const name = h('input', { type: 'text', value: '', placeholder: 'e.g. Ord Sigatt', required: true, 'aria-label': 'Planet name' });
-  const region = h('select', {}, REGIONS.map((r) => h('option', { value: r, selected: r === 'Homebrew' }, r)));
+  const name = h('input', { type: 'text', value: prefill.name || '', placeholder: 'e.g. Ord Sigatt', required: true, 'aria-label': 'Planet name' });
+  const startRegion = REGIONS.includes(prefill.region) ? prefill.region : 'Homebrew';
+  const region = h('select', {}, REGIONS.map((r) => h('option', { value: r, selected: r === startRegion }, r)));
+  const knownSectors = [...new Set(app.store.listPlanets().map((p) => p.sector).filter(Boolean))].sort();
+  const sector = h('input', { type: 'text', value: prefill.sector || '', placeholder: 'optional, e.g. Bootana Hutta', list: 'sectorList', 'aria-label': 'Sector' });
+  const sectorList = h('datalist', { id: 'sectorList' }, knownSectors.map((s) => h('option', { value: s })));
   const seed = h('input', { type: 'text', value: String(randomSeed()), 'aria-label': 'Seed' });
   const typeInfo = h('p', { class: 'small muted' });
   const gridHolder = h('div', {});
@@ -29,6 +35,8 @@ export function openNewPlanetDialog(app) {
     app.createPlanet({
       name: name.value.trim() || 'New Planet',
       region: region.value,
+      sector: sector.value.trim(),
+      map: prefill.map || null,
       typeId,
       seed: /^\d+$/.test(raw) ? Number(raw) : raw || randomSeed(),
     });
@@ -41,6 +49,8 @@ export function openNewPlanetDialog(app) {
       h('div', { class: 'grow' }, field('Name', name)),
       h('div', { style: { width: '180px' } }, field('Region', region)),
     ),
+    field('Sector', sector, prefill.map ? 'It will appear on the star map where you clicked.' : 'Planets in the same sector are grouped together.'),
+    sectorList,
     h('div', { class: 'field-label' }, 'Planet type'),
     gridHolder,
     typeInfo,

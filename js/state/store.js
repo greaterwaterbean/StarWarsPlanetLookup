@@ -31,11 +31,14 @@ export function canonDefault(id) {
     region: src.region,
     typeId: src.typeId,
     diameter: src.diameter,
+    sector: src.sector || '',
+    origin: src.origin || '',
     description: src.description || '',
-    gmNotes: '',
+    gmNotes: src.gmNotes || '',
     seed: src.id,
     cells: DEFAULT_CELLS,
     params: { ...(src.params || {}) },
+    map: src.map ? { ...src.map } : null,
     edits: emptyEdits(),
     regions: [],
     locations: (src.locations || []).map((l, i) => ({
@@ -45,8 +48,8 @@ export function canonDefault(id) {
       lat: l.lat,
       lon: l.lon,
       notes: l.notes || '',
-      gmNotes: '',
-      secret: false,
+      gmNotes: l.gmNotes || '',
+      secret: !!l.secret,
       water: !!l.water,
       snap: !l.water,
     })),
@@ -54,11 +57,14 @@ export function canonDefault(id) {
   };
 }
 
-export function newPlanet({ name, typeId, seed, region }) {
+export function newPlanet({ name, typeId, seed, region, sector, map }) {
   return {
     id: makeId('planet'),
     name: name || 'New Planet',
     region: region || 'Homebrew',
+    sector: sector || '',
+    origin: '',
+    map: map || null,
     typeId: typeId || 'temperate',
     diameter: 10000,
     description: '',
@@ -79,6 +85,12 @@ export function normalizePlanet(p) {
   planet.id = String(planet.id || makeId('planet'));
   planet.name = String(planet.name || 'Unnamed Planet');
   planet.region = planet.region || 'Homebrew';
+  planet.sector = planet.sector ? String(planet.sector) : '';
+  planet.origin = planet.origin ? String(planet.origin) : '';
+  const m = planet.map;
+  planet.map = m && typeof m === 'object' && m.id && Number.isFinite(+m.x) && Number.isFinite(+m.y) ? { id: String(m.id), x: +m.x, y: +m.y } : null;
+  if (planet.map && typeof m.replaces === 'string') planet.map.replaces = m.replaces;
+  if (planet.map && typeof m.area === 'string') planet.map.area = m.area;
   planet.typeId = planet.typeId || 'temperate';
   planet.diameter = Number.isFinite(+planet.diameter) && +planet.diameter > 0 ? +planet.diameter : 10000;
   planet.description = planet.description || '';
@@ -111,7 +123,7 @@ export class Store {
     this.cache = new Map();
     this.timer = null;
     this.lastSaved = null;
-    this.data = { app: APP_ID, version: SCHEMA_VERSION, planets: {}, deletedCanon: [], customTypes: [], settings: {} };
+    this.data = { app: APP_ID, version: SCHEMA_VERSION, planets: {}, deletedCanon: [], customTypes: [], settings: {}, mapLayout: {} };
   }
 
   load() {
@@ -217,6 +229,24 @@ export class Store {
     this.scheduleSave();
   }
 
+  // Star map positions you dragged, per map: { [mapId]: { [nodeId]: { x, y } } }.
+  mapLayout(mapId) {
+    if (!this.data.mapLayout) this.data.mapLayout = {};
+    return this.data.mapLayout[mapId] || {};
+  }
+
+  setMapPosition(mapId, nodeId, x, y) {
+    if (!this.data.mapLayout) this.data.mapLayout = {};
+    if (!this.data.mapLayout[mapId]) this.data.mapLayout[mapId] = {};
+    this.data.mapLayout[mapId][nodeId] = { x: Math.round(x), y: Math.round(y) };
+    this.scheduleSave();
+  }
+
+  resetMapLayout(mapId) {
+    if (this.data.mapLayout) delete this.data.mapLayout[mapId];
+    this.scheduleSave();
+  }
+
   get customTypes() {
     return this.data.customTypes;
   }
@@ -231,8 +261,14 @@ export class Store {
       app: APP_ID,
       version: SCHEMA_VERSION,
       exportedAt: new Date().toISOString(),
-      planets: JSON.parse(JSON.stringify(planets, roundFloats)),
+      planets: JSON.parse(JSON.stringify(planets, roundFloats)).map((p) => {
+        // Bake dragged star map positions into the exported planet.
+        const moved = p.map && this.mapLayout(p.map.id)[p.id];
+        if (moved) p.map = { ...p.map, x: moved.x, y: moved.y };
+        return p;
+      }),
       customTypes: this.data.customTypes,
+      mapLayout: this.data.mapLayout || {},
     };
   }
 
@@ -253,6 +289,12 @@ export class Store {
       this.cache.delete(planet.id);
       this.data.deletedCanon = this.data.deletedCanon.filter((id) => id !== planet.id);
     }
+    if (obj.mapLayout && typeof obj.mapLayout === 'object') {
+      if (!this.data.mapLayout) this.data.mapLayout = {};
+      for (const [mapId, nodes] of Object.entries(obj.mapLayout)) {
+        if (nodes && typeof nodes === 'object') this.data.mapLayout[mapId] = { ...(this.data.mapLayout[mapId] || {}), ...nodes };
+      }
+    }
     if (Array.isArray(obj.customTypes)) {
       const ids = new Set(this.data.customTypes.map((t) => t.id));
       for (const t of obj.customTypes) if (t && t.id && !ids.has(t.id)) this.data.customTypes.push(t);
@@ -262,7 +304,7 @@ export class Store {
   }
 
   eraseAll() {
-    this.data = { app: APP_ID, version: SCHEMA_VERSION, planets: {}, deletedCanon: [], customTypes: [], settings: {} };
+    this.data = { app: APP_ID, version: SCHEMA_VERSION, planets: {}, deletedCanon: [], customTypes: [], settings: {}, mapLayout: {} };
     this.cache.clear();
     try {
       this.storage?.removeItem(STORAGE_KEY);

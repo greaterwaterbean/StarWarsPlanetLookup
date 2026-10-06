@@ -283,6 +283,19 @@ export function bindControls(app) {
     if (t.closest && t.closest('input, textarea, select, [contenteditable="true"]')) return;
     if (document.querySelector('dialog[open]')) return;
     const k = e.key;
+    if (app.starmap.isOpen) {
+      // While the star map is open only its own keys apply.
+      if (k === 'Escape' || k === 's' || k === 'S') {
+        e.preventDefault();
+        app.starmap.close();
+      }
+      return;
+    }
+    if ((k === 's' || k === 'S') && !(e.ctrlKey || e.metaKey || e.altKey)) {
+      e.preventDefault();
+      app.starmap.toggle();
+      return;
+    }
     const mod = e.ctrlKey || e.metaKey;
     if (mod && (k === 'z' || k === 'Z')) {
       e.preventDefault();

@@ -31,6 +31,7 @@ export class UI {
     this.planetQuery = '';
     this.placeQuery = '';
     this.placeType = '';
+    this.collapsed = new Set();
     this.panels = {};
     this.toastTimer = null;
   }
@@ -53,6 +54,7 @@ export class UI {
       else if (action === 'zoomOut') app.zoomBy(1 / 1.5);
       else if (action === 'resetView') app.resetView();
       else if (action === 'playerView') app.setPlayerView(!app.playerView);
+      else if (action === 'starMap') app.starmap.toggle();
       else if (action === 'help') $('#helpDialog').showModal();
     });
 
@@ -160,7 +162,7 @@ export class UI {
     const type = getType(p.typeId);
     fill($('#planetTitle'),
       h('div', { class: 't' }, p.name),
-      h('div', { class: 's' }, `${p.region} / ${type.name}`),
+      h('div', { class: 's' }, [p.region, p.sector, type.name].filter(Boolean).join(' / ')),
     );
     document.title = `${p.name} | Planet Lookup`;
   }
@@ -173,6 +175,7 @@ export class UI {
     if (undo) undo.disabled = !app.history.canUndo();
     if (redo) redo.disabled = !app.history.canRedo();
     $('#toolbar [data-action="playerView"]').classList.toggle('active', app.playerView);
+    $('#toolbar [data-action="starMap"]').classList.toggle('active', !!app.starmap?.isOpen);
   }
 
   updateHud(sx, sy) {

@@ -48,6 +48,7 @@
         <button class="tool-btn gm-only" data-tool="add" data-icon="addPin" title="Add a place (L)"></button>
         <button class="tool-btn gm-only" data-tool="paint" data-icon="brush" title="Paint terrain and regions (B)"></button>
         <button class="tool-btn" data-tool="measure" data-icon="ruler" title="Measure distance (M)"></button>
+        <button class="tool-btn" data-action="starMap" data-icon="map" title="Star map: find and open planets (S)"></button>
         <span class="sep gm-only"></span>
         <button class="tool-btn gm-only" data-action="undo" data-icon="undo" title="Undo (Ctrl+Z)"></button>
         <button class="tool-btn gm-only" data-action="redo" data-icon="redo" title="Redo (Ctrl+Y)"></button>
@@ -64,6 +65,11 @@
       <div id="hud" aria-live="polite"></div>
       <div id="measureBox" hidden></div>
       <aside id="inspector" hidden></aside>
+      <div id="starmap" hidden>
+        <canvas id="starmapCanvas" aria-label="Star map. Click a world to open it."></canvas>
+        <aside id="starmapPanel"></aside>
+        <div id="starmapTip" hidden></div>
+      </div>
       <div id="toast" role="status"></div>
     </main>
   </div>
@@ -95,6 +101,7 @@
         <h3>Shortcuts</h3>
         <ul>
           <li><kbd>V</kbd> select, <kbd>M</kbd> measure, <kbd>Esc</kbd> cancel</li>
+          <li><kbd>S</kbd> star map: click any world to open it</li>
           <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo</li>
           <li><kbd>G</kbd> cell grid, <kbd>C</kbd> clouds, <kbd>X</kbd> pixel size</li>
           <li><kbd>P</kbd> player view, <kbd>Del</kbd> delete selected place</li>

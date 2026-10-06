@@ -14,6 +14,8 @@ A pixel-art planet atlas for Star Wars tabletop games. Spin a globe, zoom into i
 - **Painting.** Paint biomes, raise or lower land to make islands, seas and mountains, and paint regions (territories with colored borders and labels).
 - **Measure distances** in kilometers, with rough travel times on foot, by beast mount, landspeeder, speeder bike and airspeeder.
 - **Player view (P)** hides secret places, GM notes and every editing tool, so you can share your screen at the table.
+- **Star map (S).** A clickable chart of Hutt Space on the galactic grid, with hyperspace lanes. Bootana Hutta follows the sector map from your campaign notes. Click any world to open it, or click an uncharted system to create a planet there. Every planet also has its own link (`#planet=...`).
+- **Foundry VTT export.** Download a zip with a flat map image, a ready-to-import Foundry scene with map notes for your places, and a journal (Foundry v12 to v14).
 - **Saves automatically** in your browser, with undo and redo. You can export and import JSON backups and save the current view as a PNG.
 
 ## Running it
@@ -50,12 +52,48 @@ npx serve -l 8080                # Node.js
 | Measure | Press `M`, then click points. `Esc` or right-click clears them |
 | Undo / redo | `Ctrl+Z` / `Ctrl+Y` |
 | Layers | `G` cell grid, `C` clouds, `X` cycles the pixel size. The rest are in the **View** tab |
+| Star map | `S`, then click a world to open it. Drag to pan, scroll to zoom |
 | Player view | `P` |
 | Help | `?` |
 
 **Workflow for a new planet:** open **Planets > New planet**, pick a type, then use the **Planet** tab sliders (sea level, temperature, mountains and so on) to get the general shape. After that, paint the details and add places.
 
 **Canon planets:** your changes are saved as your own version. **Planet > Reset to original** brings back the default. Canon rarely gives latitudes, so location coordinates are invented and nudged onto land. Diameters are rough reference values. Edit them freely.
+
+## Hutt Space and the star map
+
+Hutt Space has its own star map (press `S`, or the **Map** buttons in the Planets tab). Worlds sit in their galactic grid squares (R-9 to T-14), joined by the main routes: the Pabol Hutta, the Dead Road, the Pabol Sleheyron, the Ootmian Pabol, the Shag Pabol and others.
+
+**Bootana Hutta** follows the sector map in your campaign notes (`Hutta_DND.pdf`). That map numbers its systems 1 to 21 without a legend, so the numbers were matched to worlds by comparing the hyperlane links Wookieepedia lists (from *The Essential Atlas*) against the lines on the map. Kor Hestilic, for example, is the only world with five links, just like dot 4. Dots 1-3 and 5-9 had fewer clues, so treat those as a best guess. The mapping lives in `BOOTANA_SLOTS` in `js/data/starMaps.js`.
+
+Your campaign worlds (Sakiya, Sakidopa, Sakiduba, Sakifwanna and the rest) use your notes first. Campaign secrets live in GM notes or secret places, so **Player view** hides them. The Godsheart Pulsar is on the map too.
+
+To move things around, open the star map in GM view and press **Edit layout**. **Reset layout** puts everything back.
+
+Research notes: the network policy of the cloud session that built this blocked Wookieepedia pages, so the Hutt Space data was gathered from search-result summaries and then cross-checked. Each planet's **Source** line says where its facts came from. If a detail is wrong for your table, just edit it.
+
+## Foundry VTT (v12 to v14)
+
+**Data > Foundry VTT** downloads a zip containing:
+
+- `<planet>-map.png`: a flat map of the whole planet (equirectangular, 2:1), pixel style.
+- `<planet>-scene.json`: a Foundry Scene that uses the image as its background, with a map note for each place and a km scale.
+- `<planet>-journal.json`: a Journal Entry with an overview page and one page per place.
+- `<planet>.planet.json`: the planet itself, which you can re-import into this app.
+- `README.txt`: these steps.
+
+To import it:
+
+1. **Upload the image.** In Foundry, open any file picker (for example **Configure Scene > Background Image**), create the folder `planet-lookup` in your User Data (or whatever folder you typed in the export), and upload the PNG there.
+2. **Import the scene.** In the Scenes sidebar, create a scene with any name. Right-click it, choose **Import Data**, and pick the `-scene.json` file.
+3. **Import the journal (optional).** Create a journal entry, right-click it, choose **Import Data**, and pick the `-journal.json` file.
+
+Good to know:
+
+- Foundry shows unlinked map notes to every player, so secret places are left out unless you tick **Include secret places**.
+- The ruler measures km correctly only near the equator, because a flat map stretches the poles.
+- If the app is hosted online (for example on GitHub Pages), the journal links back to the spinning globe. You can also try embedding it with **Also embed the globe in the journal**.
+- The full planet data is saved in the scene's flags (`starwars-planet-lookup`). A future Foundry module could use that to show the actual rotating globe inside Foundry.
 
 ## The planet type database
 
@@ -88,6 +126,7 @@ css/style.css         all styling
 js/main.js            starts the app
 js/app.js             the controller: current planet, camera, render loop, editing, undo
 js/controls.js        mouse, touch, wheel and keyboard
+js/foundry.js         Foundry VTT scene and journal export
 js/core/
   rng.js              seeded random numbers (same seed = same planet)
   noise.js            3D simplex noise and fractal layering
@@ -101,11 +140,14 @@ js/render/
   overlay.js          crisp layer: icons, labels, brush, measuring line
   sprites.js          pixel-art icons for places
   thumbnails.js       small previews for lists
+  flatMap.js          flat (equirectangular) map image, used by the Foundry export
 js/state/
   store.js            saving to localStorage, export and import
   history.js          undo and redo
-js/ui/                sidebar panels, inspector, dialogs, icons
-js/data/              biomes, planet types, canon planets, place types
+  zip.js              a tiny zip writer for the Foundry package
+js/ui/                sidebar panels, inspector, dialogs, icons, star map
+js/data/              biomes, planet types, planets (canonPlanets.js, huttSpace.js),
+                      star maps (starMaps.js), place types
 tests/                unit tests (run with `npm test`)
 ```
 
@@ -119,7 +161,8 @@ The interesting ideas, in the order the data flows:
 ## Ideas for later
 
 - Dice roller and character sheets, in the spirit of [Galaxy Dice Roller](https://galaxydiceroller.com/)
-- A galaxy map that links planets, with hyperspace lanes and travel times
+- Star maps for the rest of the galaxy, with travel times along the lanes
+- A Foundry VTT module that shows the spinning globe from the exported scene data
 - Rivers, roads and trade routes drawn along the cells
 - Night-side city lights for ecumenopolis worlds
 - Sharing a planet with players through a read-only link

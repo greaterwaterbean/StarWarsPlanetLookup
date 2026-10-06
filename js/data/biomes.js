@@ -70,6 +70,13 @@ export const BIOMES = [
   { id: 'fungal_alt', name: 'Giant Fungi', color: '#e09f32', vary: 0.08 },
   { id: 'fungal_grass', name: 'Lime Undergrowth', color: '#9bc93f' },
 
+  // Polluted and toxic
+  { id: 'toxic_water', name: 'Polluted Water', color: '#4f5e2a', water: true },
+  { id: 'acid_lake', name: 'Acid Lake', color: '#9fcf2f', water: true },
+  { id: 'sludge', name: 'Sludge Bog', color: '#57502f' },
+  { id: 'blighted_forest', name: 'Blighted Forest', color: '#3f4a2c' },
+  { id: 'chem_flats', name: 'Chemical Flats', color: '#b8a554', vary: 0.06 },
+
   // City (ecumenopolis)
   { id: 'city', name: 'City', color: '#8a8f9b', vary: 0.18 },
   { id: 'city_dense', name: 'Dense City', color: '#a9afba', vary: 0.18 },
