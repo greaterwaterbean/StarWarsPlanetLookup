@@ -1,0 +1,12 @@
+{
+  "name": "starwars-planet-lookup",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pixel-art planet atlas for Star Wars tabletop games: generated cell-based globes, editable terrain, cities and key locations.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "test": "node --test tests/"
+  },
+  "license": "MIT"
+}
