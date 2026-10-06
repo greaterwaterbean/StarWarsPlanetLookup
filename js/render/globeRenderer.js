@@ -140,8 +140,8 @@ export function renderGlobe(target, world, view, opts) {
       // A small sun glint on water.
       if (shading && isWater[cell] && !glow[cell]) {
         const s = X * HALF[0] + Y * HALF[1] + Z * HALF[2];
-        if (s > 0.97) {
-          let spec = Math.pow(s, 80) * 110;
+        if (s > 0.985) {
+          let spec = Math.pow(s, 160) * 90;
           if (dither) spec = Math.floor(spec / 40 + BAYER[brow + (i & 3)]) * 40;
           r += spec; g += spec; b += spec;
         }
@@ -150,7 +150,7 @@ export function renderGlobe(target, world, view, opts) {
       if (clouds) {
         const cv = cloudAt(clouds, wx, wy, wz);
         if (cv > 0) {
-          let a = (cv / 255) * 0.88;
+          let a = (cv / 255) * 0.7;
           if (dither) a = Math.floor(a * 4 + BAYER[brow + (i & 3)]) / 4;
           let cs = 1;
           if (shading) {

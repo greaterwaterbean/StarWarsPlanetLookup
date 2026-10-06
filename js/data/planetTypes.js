@@ -118,7 +118,7 @@ export const PLANET_TYPES = [
     examples: 'Hoth, Ilum, Kijimi',
     gen: { seaLevel: 0.3, scale: 1.7, mountains: 0.6, temperature: -0.9, iceCaps: 1, clouds: 0.3, atmosphere: '#cfe9ff' },
     rules: [
-      { water: true, t: [0, 0.3], biome: 'sea_ice' },
+      { water: true, t: [0, 0.5], biome: 'sea_ice' },
       { water: true, h: [-1, -0.35], biome: 'deep_ocean' },
       { water: true, biome: 'ocean' },
       { h: [0.72, 1], biome: 'snow_peaks' },

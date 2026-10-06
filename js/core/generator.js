@@ -213,14 +213,18 @@ export function computeClouds(seed, coverage) {
         x /= len; y /= len; z /= len;
         const w = fbm(warp, x * 1.5, y * 1.5, z * 1.5, 3) * 0.6;
         // Stretching z makes clouds streak east-west, like weather bands.
-        raw[(f * S + j) * S + i] = fbm(noise, x * 2.4 + w, y * 2.4 - w, z * 5.5, 5, 0.55);
+        raw[(f * S + j) * S + i] = fbm(noise, x * 3.4 + w, y * 3.4 - w, z * 7.5, 5, 0.6);
       }
     }
   }
   const sorted = Float32Array.from(raw).sort();
   const thr = sorted[Math.min(sorted.length - 1, Math.floor((1 - coverage) * sorted.length))];
   const data = new Uint8Array(raw.length);
-  for (let k = 0; k < raw.length; k++) data[k] = Math.round(clamp((raw[k] - thr) / 0.12, 0, 1) * 255);
+  // Soft edges: cloud density ramps up gradually instead of switching on at the threshold.
+  for (let k = 0; k < raw.length; k++) {
+    const a = clamp((raw[k] - thr) / 0.25, 0, 1);
+    data[k] = Math.round(a * a * 255);
+  }
   return { size: S, data };
 }
 

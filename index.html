@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Planet Lookup</title>
+  <meta name="description" content="Pixel-art planet atlas for Star Wars tabletop games: spin a cell-based globe, add cities and key locations, paint terrain.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Silkscreen&family=VT323&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar" aria-label="Planet tools">
+      <header class="brand">
+        <button id="menuClose" class="icon-btn only-mobile" title="Close menu" data-icon="close"></button>
+        <div>
+          <div class="brand-title">Planet Lookup</div>
+          <div class="brand-sub">Galactic holo-atlas</div>
+        </div>
+      </header>
+      <nav class="tabs" role="tablist">
+        <button role="tab" data-tab="planets" data-icon="globe" class="active">Planets</button>
+        <button role="tab" data-tab="planet" data-icon="sliders">Planet</button>
+        <button role="tab" data-tab="places" data-icon="pin">Places</button>
+        <button role="tab" data-tab="paint" data-icon="brush" class="gm-only">Paint</button>
+        <button role="tab" data-tab="view" data-icon="layers">View</button>
+        <button role="tab" data-tab="data" data-icon="disk" class="gm-only">Data</button>
+      </nav>
+      <section class="panel active" data-panel="planets"></section>
+      <section class="panel" data-panel="planet"></section>
+      <section class="panel" data-panel="places"></section>
+      <section class="panel" data-panel="paint"></section>
+      <section class="panel" data-panel="view"></section>
+      <section class="panel" data-panel="data"></section>
+    </aside>
+
+    <main id="stage">
+      <canvas id="stars" aria-hidden="true"></canvas>
+      <canvas id="globe" aria-hidden="true"></canvas>
+      <canvas id="overlay" aria-label="Planet globe. Drag to rotate, scroll to zoom."></canvas>
+
+      <button id="menuOpen" class="icon-btn only-mobile" title="Menu" data-icon="menu"></button>
+
+      <div id="toolbar" role="toolbar" aria-label="Map tools">
+        <button class="tool-btn" data-tool="select" data-icon="select" title="Select and rotate (V)"></button>
+        <button class="tool-btn gm-only" data-tool="add" data-icon="addPin" title="Add a place (L)"></button>
+        <button class="tool-btn gm-only" data-tool="paint" data-icon="brush" title="Paint terrain and regions (B)"></button>
+        <button class="tool-btn" data-tool="measure" data-icon="ruler" title="Measure distance (M)"></button>
+        <span class="sep gm-only"></span>
+        <button class="tool-btn gm-only" data-action="undo" data-icon="undo" title="Undo (Ctrl+Z)"></button>
+        <button class="tool-btn gm-only" data-action="redo" data-icon="redo" title="Redo (Ctrl+Y)"></button>
+        <span class="sep"></span>
+        <button class="tool-btn" data-action="zoomIn" data-icon="zoomIn" title="Zoom in (+)"></button>
+        <button class="tool-btn" data-action="zoomOut" data-icon="zoomOut" title="Zoom out (-)"></button>
+        <button class="tool-btn" data-action="resetView" data-icon="target" title="Reset view (R)"></button>
+        <span class="sep"></span>
+        <button class="tool-btn" data-action="playerView" data-icon="eye" title="Player view: hide secrets and editing (P)"></button>
+        <button class="tool-btn" data-action="help" data-icon="help" title="Help and shortcuts (?)"></button>
+      </div>
+
+      <div id="planetTitle"></div>
+      <div id="hud" aria-live="polite"></div>
+      <div id="measureBox" hidden></div>
+      <aside id="inspector" hidden></aside>
+      <div id="toast" role="status"></div>
+    </main>
+  </div>
+
+  <dialog id="helpDialog">
+    <h2>How to use Planet Lookup</h2>
+    <div class="help-grid">
+      <section>
+        <h3>Moving around</h3>
+        <ul>
+          <li><b>Drag</b> to spin the planet (right-drag works in every tool)</li>
+          <li><b>Scroll</b> or pinch to zoom toward the cursor</li>
+          <li><b>Double-click</b> to fly in</li>
+          <li>Arrow keys rotate, <kbd>+</kbd> <kbd>-</kbd> zoom, <kbd>R</kbd> resets</li>
+        </ul>
+        <h3>Places</h3>
+        <ul>
+          <li><kbd>L</kbd> then click the globe to add a city or key location</li>
+          <li>Click a place to edit it. Drag it to move it</li>
+          <li>Mark a place <b>Secret</b> to hide it in player view</li>
+        </ul>
+      </section>
+      <section>
+        <h3>Painting</h3>
+        <ul>
+          <li><kbd>B</kbd> paint biomes, raise or lower land, or paint regions</li>
+          <li>Pick a planet type and settings in the <b>Planet</b> tab first, then paint the details</li>
+        </ul>
+        <h3>Shortcuts</h3>
+        <ul>
+          <li><kbd>V</kbd> select, <kbd>M</kbd> measure, <kbd>Esc</kbd> cancel</li>
+          <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo, <kbd>Ctrl</kbd>+<kbd>Y</kbd> redo</li>
+          <li><kbd>G</kbd> cell grid, <kbd>C</kbd> clouds, <kbd>X</kbd> pixel size</li>
+          <li><kbd>P</kbd> player view, <kbd>Del</kbd> delete selected place</li>
+        </ul>
+      </section>
+    </div>
+    <p class="muted">Your work saves automatically in this browser. Use the Data tab to export a backup file.</p>
+    <form method="dialog"><button class="btn primary">Got it</button></form>
+  </dialog>
+
+  <dialog id="newPlanetDialog"></dialog>
+  <dialog id="confirmDialog"></dialog>
+
+  <noscript>Planet Lookup needs JavaScript.</noscript>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
