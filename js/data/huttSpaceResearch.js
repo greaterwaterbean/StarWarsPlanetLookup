@@ -75,7 +75,7 @@ export const HUTT_SPACE_RESEARCH = [
   },
   {
     id: 'hollastvii', name: 'Hollast VII', region: 'Hutt Space', sector: '', typeId: 'temperate', diameter: 10000,
-    map: near('hollastin', -32, -30),
+    map: near('hollastin', -32, -70),
     origin: 'Wookieepedia, via search summaries',
     description: 'A Hutt Space planet in grid square S-12, also called Hollastin Seven.',
     locations: [],
@@ -89,7 +89,7 @@ export const HUTT_SPACE_RESEARCH = [
   },
   {
     id: 'orondia', name: 'Orondia', region: 'Hutt Space', sector: '', typeId: 'barren', diameter: 10000,
-    map: inSquare('S-11', 'orondia'),
+    map: onGrid('S-11', 0.04, 0.98),
     origin: 'Wookieepedia (canon and Legends), via search summaries',
     description: 'A bleak world whose only stop of note is a fuel depot on the surface, run by a Bith swindler who works with his brother on Nal Hutta. It shows up in Clone Wars-era stories.',
     locations: [
@@ -128,7 +128,7 @@ export const HUTT_SPACE_RESEARCH = [
   },
   {
     id: 'ganath', name: 'Ganath', region: 'Hutt Space', sector: '', typeId: 'temperate', diameter: 10000,
-    map: onGrid('R-12', 0.45, 0.55),
+    map: nearFeature('oktos', 26, 14),
     origin: 'Wookieepedia (canon and Legends), via search summaries',
     description: 'Homeworld of the near-Human Ganathans, hidden in the largely uncharted Oktos Nebula. Its people fly slow, steam-powered starships.',
     locations: [],
@@ -171,7 +171,7 @@ export const HUTT_SPACE_RESEARCH = [
   },
   {
     id: 'dasoocha', name: 'Da Soocha V', region: 'Hutt Space', sector: '', typeId: 'ocean', diameter: 10000,
-    map: nearFeature('cyax', 24, 18),
+    map: nearFeature('cyax', 90, 0),
     origin: 'Wookieepedia (Legends), via search summaries',
     description: 'An ocean-covered world in the uncharted Cyax system. Cyax shines as the brightest star in Varl\'s sky, and the Hutts told legends of a living, thinking ocean under its light, then left the system alone so the myth would stay unchallenged. Rebel explorers around the time of Endor found that the planet really is one vast ocean. A short hyperlane runs from Cyax to Sakifwanna.',
     locations: [],
@@ -515,7 +515,7 @@ export const HUTT_SPACE_RESEARCH = [
     ],
   },
   {
-    id: 'thirdmoonofvarl', name: 'Third moon of Varl', region: 'Hutt Space', sector: '', typeId: 'barren', diameter: 4500,
+    id: 'thirdmoonofvarl', name: 'Third moon of Varl', region: 'Hutt Space', sector: 'Bootana Hutta', typeId: 'barren', diameter: 4500,
     map: near('varl', 28, 26),
     origin: 'Wookieepedia (canon), via search summaries',
     description: 'One of the three moons of Varl, the original Hutt homeworld. Old Hutt pilgrimage tunnels link it to the other two moons. A Pyke Syndicate splinter group later turned those tunnels into the Varl Circuit podrace course.',

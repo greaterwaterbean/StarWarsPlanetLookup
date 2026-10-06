@@ -243,6 +243,19 @@ export class Store {
     this.scheduleSave();
   }
 
+  // Only the dragged positions of these planets (so exporting one planet does
+  // not carry, or later overwrite, the rest of your map).
+  layoutFor(planets) {
+    const out = {};
+    for (const p of planets) {
+      const moved = p.map && this.mapLayout(p.map.id)[p.id];
+      if (!moved) continue;
+      if (!out[p.map.id]) out[p.map.id] = {};
+      out[p.map.id][p.id] = moved;
+    }
+    return out;
+  }
+
   resetMapLayout(mapId) {
     if (this.data.mapLayout) delete this.data.mapLayout[mapId];
     this.scheduleSave();
@@ -262,14 +275,9 @@ export class Store {
       app: APP_ID,
       version: SCHEMA_VERSION,
       exportedAt: new Date().toISOString(),
-      planets: JSON.parse(JSON.stringify(planets, roundFloats)).map((p) => {
-        // Bake dragged star map positions into the exported planet.
-        const moved = p.map && this.mapLayout(p.map.id)[p.id];
-        if (moved) p.map = { ...p.map, x: moved.x, y: moved.y };
-        return p;
-      }),
+      planets: JSON.parse(JSON.stringify(planets, roundFloats)),
       customTypes: this.data.customTypes,
-      mapLayout: this.data.mapLayout || {},
+      mapLayout: this.layoutFor(planets),
     };
   }
 
@@ -291,9 +299,13 @@ export class Store {
       this.data.deletedCanon = this.data.deletedCanon.filter((id) => id !== planet.id);
     }
     if (obj.mapLayout && typeof obj.mapLayout === 'object') {
-      if (!this.data.mapLayout) this.data.mapLayout = {};
+      // Take positions only for the planets in this file.
+      const imported = new Set(list.map((raw) => String(raw.id)));
       for (const [mapId, nodes] of Object.entries(obj.mapLayout)) {
-        if (nodes && typeof nodes === 'object') this.data.mapLayout[mapId] = { ...(this.data.mapLayout[mapId] || {}), ...nodes };
+        if (!nodes || typeof nodes !== 'object') continue;
+        for (const [nodeId, pos] of Object.entries(nodes)) {
+          if (imported.has(nodeId) && pos && Number.isFinite(+pos.x) && Number.isFinite(+pos.y)) this.setMapPosition(mapId, nodeId, +pos.x, +pos.y);
+        }
       }
     }
     if (Array.isArray(obj.customTypes)) {

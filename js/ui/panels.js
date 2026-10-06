@@ -194,7 +194,7 @@ export function renderPlanetPanel(el, app) {
       onclick: () => app.starmap.open(p.map.id, { planetId: p.id }),
     }, 'Show on star map') : null,
   );
-  const origin = p.origin ? h('p', { class: 'small muted' }, `Source: ${p.origin}`) : null;
+  const origin = p.origin ? h('p', { class: 'small muted gm-only' }, `Source: ${p.origin}`) : null;
 
   const textInput = (key, props = {}) => h('input', {
     type: 'text',
@@ -220,6 +220,7 @@ export function renderPlanetPanel(el, app) {
   const regionSelect = h('select', {
     onchange: (e) => {
       app.edit(() => { p.region = e.target.value; });
+      app.ui.expanded.add(p.region);
       app.ui.updateTitle();
       app.ui.renderPlanets();
     },
@@ -745,7 +746,8 @@ export function renderDataPanel(el, app) {
 function foundrySection(app) {
   const saved = { width: 4096, pixel: 4, includeSecret: false, includeGmNotes: false, bakeLabels: false, folder: 'planet-lookup', embedGlobe: false, ...(app.store.settings.foundry || {}) };
   const online = /^https?:$/.test(location.protocol) && !/^(localhost|127\.|0\.0\.0\.0)/.test(location.hostname);
-  const opts = { ...saved, globeUrl: online ? app.planetLink() : '' };
+  // The journal link opens in player view so players never see secrets.
+  const opts = { ...saved, globeUrl: online ? app.planetLink(app.planet.id, { player: true }) : '' };
   const remember = () => {
     const { globeUrl, ...keep } = opts;
     app.store.setSetting('foundry', keep);

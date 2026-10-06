@@ -14,7 +14,7 @@ A pixel-art planet atlas for Star Wars tabletop games. Spin a globe, zoom into i
 - **Painting.** Paint biomes, raise or lower land to make islands, seas and mountains, and paint regions (territories with colored borders and labels).
 - **Measure distances** in kilometers, with rough travel times on foot, by beast mount, landspeeder, speeder bike and airspeeder.
 - **Player view (P)** hides secret places, GM notes and every editing tool, so you can share your screen at the table.
-- **Star map (S).** A clickable chart of Hutt Space on the galactic grid, with hyperspace lanes. Bootana Hutta follows the sector map from your campaign notes. Click any world to open it, or click an uncharted system to create a planet there. Every planet also has its own link (`#planet=...`).
+- **Star map (S).** A clickable chart of Hutt Space on the galactic grid, with hyperspace lanes. Bootana Hutta follows the sector map from your campaign notes. Click any world to open it. Every planet also has its own link (`#planet=...`); add `&view=player` to a link and it always opens in player view.
 - **Foundry VTT export.** Download a zip with a flat map image, a ready-to-import Foundry scene with map notes for your places, and a journal (Foundry v12 to v14).
 - **Saves automatically** in your browser, with undo and redo. You can export and import JSON backups and save the current view as a PNG.
 
@@ -68,7 +68,7 @@ Hutt Space has its own star map (press `S`, or the **Map** buttons in the Planet
 
 Your campaign worlds (Sakiya, Sakidopa, Sakiduba, Sakifwanna and the rest) use your notes first. Campaign secrets live in GM notes or secret places, so **Player view** hides them. The Godsheart Pulsar is on the map too.
 
-To move things around, open the star map in GM view and press **Edit layout**. **Reset layout** puts everything back.
+To move things around, open the star map in GM view and press **Edit layout**: drag any world, or click empty space to create a new planet right there. Worlds whose position is unknown wait in the **Location unknown** corner until you drag them into place. **Reset layout** puts everything back.
 
 Research notes: the network policy of the cloud session that built this blocked Wookieepedia pages, so the Hutt Space data was gathered from search-result summaries and then cross-checked. Each planet's **Source** line says where its facts came from. If a detail is wrong for your table, just edit it.
 
@@ -90,9 +90,9 @@ To import it:
 
 Good to know:
 
-- Foundry shows unlinked map notes to every player, so secret places are left out unless you tick **Include secret places**.
+- Foundry shows unlinked map notes to every player, so secret places are left out of everything in the zip unless you tick **Include secret places**. GM notes go into the journal and planet file only if you tick **Include GM notes**, and never into the scene.
 - The ruler measures km correctly only near the equator, because a flat map stretches the poles.
-- If the app is hosted online (for example on GitHub Pages), the journal links back to the spinning globe. You can also try embedding it with **Also embed the globe in the journal**.
+- If the app is hosted online (for example on GitHub Pages), the journal links back to the spinning globe, opened in player view so secrets stay hidden. You can also try embedding it with **Also embed the globe in the journal**.
 - The full planet data is saved in the scene's flags (`starwars-planet-lookup`). A future Foundry module could use that to show the actual rotating globe inside Foundry.
 
 ## The planet type database

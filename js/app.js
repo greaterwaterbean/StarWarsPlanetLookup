@@ -110,7 +110,10 @@ export class App {
     if (s.pixelSize) this.pixelSize = s.pixelSize;
     if (s.paint) Object.assign(this.paint, s.paint, { regionId: null });
     if (s.lastLocationType) this.lastLocationType = s.lastLocationType;
-    this.playerView = !!s.playerView;
+    // A link ending in &view=player (used in the Foundry journal) always opens in
+    // player view, so a shared globe never shows secrets.
+    this.playerLocked = /(?:^|[#&])view=player(?:&|$)/.test(location.hash);
+    this.playerView = this.playerLocked || !!s.playerView;
     document.body.classList.toggle('player-view', this.playerView);
 
     this.ui = new UI(this);
@@ -131,10 +134,9 @@ export class App {
 
     window.addEventListener('hashchange', () => {
       const hid = this.planetIdFromHash();
-      if (hid && hid !== this.planet?.id && this.store.getPlanet(hid)) {
-        this.starmap.close();
-        this.selectPlanet(hid);
-      }
+      // Going back from a #map= link closes the map again.
+      if (!/(?:^|[#&])map=/.test(location.hash)) this.starmap.close();
+      if (hid && hid !== this.planet?.id && this.store.getPlanet(hid)) this.selectPlanet(hid);
       this.openMapFromHash();
     });
     window.addEventListener('beforeunload', () => {
@@ -149,24 +151,36 @@ export class App {
     }
   }
 
-  planetIdFromHash() {
-    const m = /planet=([^&]+)/.exec(location.hash);
-    return m ? decodeURIComponent(m[1]) : null;
+  // Read one key from the URL hash. A broken escape (like %E0) reads as missing.
+  hashParam(key, hash = location.hash) {
+    const m = new RegExp(`(?:^|[#&])${key}=([^&]*)`).exec(hash);
+    if (!m) return null;
+    try {
+      return decodeURIComponent(m[1]) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  planetIdFromHash(hash = location.hash) {
+    return this.hashParam('planet', hash);
   }
 
   // Links like #map=hutt-space&area=bootana-hutta open the star map.
   openMapFromHash(hash = location.hash) {
-    const m = /map=([^&]+)/.exec(hash);
-    if (!m) return;
-    const area = /area=([^&]+)/.exec(hash);
-    const mapId = decodeURIComponent(m[1]);
-    const areaId = area ? decodeURIComponent(area[1]) : null;
+    const mapId = this.hashParam('map', hash);
+    if (!mapId) return;
+    const areaId = this.hashParam('area', hash);
     if (this.starmap.isOpen && this.starmap.mapId === mapId) return;
     this.starmap.open(mapId, { area: areaId });
   }
 
-  planetLink(id = this.planet?.id) {
-    return `${location.origin}${location.pathname}#planet=${encodeURIComponent(id)}`;
+  planetLink(id = this.planet?.id, { player = false } = {}) {
+    return `${location.origin}${location.pathname}#planet=${encodeURIComponent(id)}${player ? '&view=player' : ''}`;
+  }
+
+  planetHash(id) {
+    return `#planet=${encodeURIComponent(id)}${this.playerLocked ? '&view=player' : ''}`;
   }
 
   // ---------- Planets ----------
@@ -175,6 +189,8 @@ export class App {
     const planet = this.store.getPlanet(id);
     if (!planet) return;
     this.commitEdit();
+    // Picking a planet anywhere returns to its globe.
+    if (this.starmap?.isOpen) this.starmap.close();
     this.planet = planet;
     this.world = buildWorld(planet);
     this.snapLocations();
@@ -190,7 +206,7 @@ export class App {
     }
     this.paint.regionId = planet.regions[0]?.id ?? null;
     this.store.setSetting('lastPlanetId', id);
-    history.replaceState(null, '', `#planet=${encodeURIComponent(id)}`);
+    history.replaceState(null, '', this.planetHash(id));
     document.title = `${planet.name} | Planet Lookup`;
     this.ui.onPlanetChanged();
     this.requestRender();
@@ -289,6 +305,11 @@ export class App {
     copy.id = makeId('planet');
     copy.name = `${this.planet.name} (copy)`;
     copy.canon = false;
+    if (copy.map) {
+      // Start next to the original (where it is now, if it was dragged) rather than on top of it.
+      const moved = this.store.mapLayout(copy.map.id)[this.planet.id];
+      copy.map = { id: copy.map.id, x: (moved ? moved.x : copy.map.x) + 30, y: (moved ? moved.y : copy.map.y) + 20 };
+    }
     this.store.addPlanet(copy);
     this.selectPlanet(copy.id);
     this.toast('Planet duplicated');
@@ -606,13 +627,17 @@ export class App {
   }
 
   setPlayerView(on) {
+    if (this.playerLocked && !on) {
+      this.toast('This link always opens in player view');
+      return;
+    }
     this.commitEdit();
     this.playerView = on;
     document.body.classList.toggle('player-view', on);
     if (on && (this.tool === 'add' || this.tool === 'paint')) this.setTool('select');
     const sel = this.getLocation(this.selectedId);
     if (on && sel?.secret) this.selectedId = null;
-    this.store.setSetting('playerView', on);
+    if (!this.playerLocked) this.store.setSetting('playerView', on);
     this.ui.onPlayerViewChanged();
     this.requestRender();
     this.toast(on ? 'Player view: secrets and editing hidden' : 'GM view');
@@ -851,9 +876,11 @@ export class App {
     });
   }
 
-  exportFlatMap(options) {
+  async exportFlatMap(options) {
     const canvas = this.flatMapCanvas(options);
-    canvas.toBlob((blob) => blob && download(`${slug(this.planet.name)}-map.png`, blob));
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('Could not create the map image (it may be too large for this browser).');
+    download(`${slug(this.planet.name)}-map.png`, blob);
   }
 
   // Zip with a flat map image, a Foundry scene, a journal and the planet data.
@@ -868,19 +895,25 @@ export class App {
     const cleanFolder = folder.trim().replace(/^\/+|\/+$/g, '') || 'planet-lookup';
     const files = { image: `${name}-map.png`, scene: `${name}-scene.json`, journal: `${name}-journal.json`, planet: `${name}.planet.json` };
     const imagePath = `${cleanFolder}/${files.image}`;
-    const planetData = this.store.exportData([planet]).planets[0];
-    if (!includeSecret) planetData.locations = planetData.locations.filter((l) => !l.secret);
-    if (!includeGmNotes) {
-      planetData.gmNotes = '';
-      planetData.locations.forEach((l) => { l.gmNotes = ''; });
-    }
-    const scene = foundryScene(planet, { width: canvas.width, height: canvas.height, imagePath, includeSecret, planetData });
+    // Everything in the zip follows the two privacy boxes. Scene flags reach every
+    // player, so they never carry GM notes; the journal and planet file do only if asked.
+    const filtered = (keepGmNotes) => {
+      const data = this.store.exportData([planet]);
+      const p = data.planets[0];
+      if (!includeSecret) p.locations = p.locations.filter((l) => !l.secret);
+      if (!keepGmNotes) {
+        p.gmNotes = '';
+        p.locations.forEach((l) => { l.gmNotes = ''; });
+      }
+      return data;
+    };
+    const scene = foundryScene(planet, { width: canvas.width, height: canvas.height, imagePath, includeSecret, planetData: filtered(false).planets[0] });
     const journal = foundryJournal(planet, { includeSecret, includeGmNotes, globeUrl, embedGlobe });
     const zip = makeZip([
       { name: files.image, data: png },
       { name: files.scene, data: JSON.stringify(scene, null, 2) },
       { name: files.journal, data: JSON.stringify(journal, null, 2) },
-      { name: files.planet, data: JSON.stringify(this.store.exportData([planet]), null, 2) },
+      { name: files.planet, data: JSON.stringify(filtered(includeGmNotes), null, 2) },
       { name: 'README.txt', data: foundryReadme(planet, files, imagePath) },
     ]);
     download(`${name}-foundry.zip`, new Blob([zip], { type: 'application/zip' }));

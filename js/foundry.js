@@ -40,6 +40,10 @@ function paragraphs(text) {
   return String(text || '').split(/\n+/).filter(Boolean).map((p) => `<p>${escapeHTML(p)}</p>`).join('');
 }
 
+// Foundry rejects documents with empty names, so blank names get a stand-in.
+const placeName = (loc) => String(loc.name || '').trim() || getLocationType(loc.type).name;
+const planetName = (planet) => String(planet.name || '').trim() || 'Unnamed Planet';
+
 // Places that go into the export. Secret places are left out unless asked for,
 // because Foundry shows unlinked map notes to every player.
 export function exportedLocations(planet, includeSecret = false) {
@@ -53,8 +57,8 @@ export function exportedLocations(planet, includeSecret = false) {
  */
 export function foundryScene(planet, options) {
   const { width, height, imagePath, includeSecret = false } = options;
-  // Distance across 100 px of map, at the equator.
-  const kmPer100px = Math.round(((Math.PI * planet.diameter) / width) * 100);
+  // Distance across 100 px of map, at the equator (Foundry accepts fractions).
+  const kmPer100px = Math.max(0.01, Math.round(((Math.PI * planet.diameter) / width) * 10000) / 100);
   const iconSize = Math.max(32, Math.round(width / 90));
   const fontSize = Math.max(18, Math.round(width / 160));
   const notes = exportedLocations(planet, includeSecret).map((loc) => {
@@ -66,7 +70,7 @@ export function foundryScene(planet, options) {
       pageId: null,
       texture: { src: NOTE_ICONS[loc.type] || NOTE_ICONS.poi },
       iconSize,
-      text: loc.name,
+      text: placeName(loc),
       fontSize,
       textAnchor: 1,
       textColor: '#ffffff',
@@ -75,9 +79,9 @@ export function foundryScene(planet, options) {
     };
   });
   return {
-    name: planet.name,
+    name: planetName(planet),
     navigation: true,
-    navName: planet.name,
+    navName: planetName(planet),
     width,
     height,
     padding: 0,
@@ -124,9 +128,9 @@ export function foundryJournal(planet, options = {}) {
   exportedLocations(planet, includeSecret).forEach((loc, i) => {
     let content = `<p><em>${escapeHTML(getLocationType(loc.type).name)}</em></p>${paragraphs(loc.notes)}`;
     if (includeGmNotes && loc.gmNotes) content += `<h3>GM notes</h3>${paragraphs(loc.gmNotes)}`;
-    pages.push({ name: loc.name, type: 'text', title: { show: true, level: 1 }, text: { content, format: 1 }, sort: (i + 1) * 100000 });
+    pages.push({ name: placeName(loc), type: 'text', title: { show: true, level: 1 }, text: { content, format: 1 }, sort: (i + 1) * 100000 });
   });
-  return { name: planet.name, pages, flags: { [FLAG_SCOPE]: { planetId: planet.id } } };
+  return { name: planetName(planet), pages, flags: { [FLAG_SCOPE]: { planetId: planet.id } } };
 }
 
 export function foundryReadme(planet, files, imagePath) {

@@ -285,7 +285,8 @@ export function bindControls(app) {
     const k = e.key;
     if (app.starmap.isOpen) {
       // While the star map is open only its own keys apply.
-      if (k === 'Escape' || k === 's' || k === 'S') {
+      const plainS = (k === 's' || k === 'S') && !(e.ctrlKey || e.metaKey || e.altKey);
+      if (k === 'Escape' || plainS) {
         e.preventDefault();
         app.starmap.close();
       }

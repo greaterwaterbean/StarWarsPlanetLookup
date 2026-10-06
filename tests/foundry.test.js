@@ -58,7 +58,7 @@ test('Foundry scene marks places as notes and leaves secrets out by default', ()
   assert.equal(scene.background.src, 'planet-lookup/sakifwanna-map.png');
   assert.equal(scene.padding, 0, 'no padding, so note coordinates match the image');
   assert.equal(scene.grid.units, 'km');
-  assert.equal(scene.grid.distance, Math.round(((Math.PI * planet.diameter) / 4096) * 100));
+  assert.ok(Math.abs(scene.grid.distance - ((Math.PI * planet.diameter) / 4096) * 100) < 0.01, 'km per 100 px, kept to 2 decimals');
   const sak = planet.locations.find((l) => l.name === 'Sak');
   const note = scene.notes.find((n) => n.text === 'Sak');
   const pos = flatPosition(sak.lat, sak.lon, 4096, 2048);
@@ -78,6 +78,10 @@ test('Foundry journal has an overview plus a page per place, GM notes only on re
   const gm = foundryJournal(planet, { includeGmNotes: true, globeUrl: 'https://example.com/#planet=sakifwanna', embedGlobe: true });
   assert.ok(JSON.stringify(gm).includes('GM notes'));
   assert.ok(gm.pages[0].text.content.includes('<iframe'));
+  // Blank names get a stand-in, because Foundry rejects empty names.
+  const blank = foundryJournal({ ...planet, name: '  ', locations: [{ ...planet.locations[0], name: '' }] });
+  assert.equal(blank.name, 'Unnamed Planet');
+  assert.ok(blank.pages[1].name.length > 0);
   // HTML in user text is escaped.
   const tricky = { ...planet, description: '<script>x</script>', locations: [] };
   assert.ok(!foundryJournal(tricky).pages[0].text.content.includes('<script>'));

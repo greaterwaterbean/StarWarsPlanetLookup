@@ -110,6 +110,7 @@ export class UI {
   }
 
   onPlanetDataRestored() {
+    if (this.app.planet) this.expanded.add(this.app.planet.region);
     this.renderAll();
     this.updateTitle();
     renderInspector(this.app);

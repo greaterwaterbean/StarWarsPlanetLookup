@@ -1,11 +1,11 @@
 // The star map: a pannable 2D chart of a region. Click a world to open it.
-// In GM view, "Edit layout" lets you drag systems around, and clicking an
-// uncharted system offers to create a planet there.
+// In GM view, "Edit layout" lets you drag systems around, and clicking empty
+// space (or an uncharted system) offers to create a planet there.
 
 import { h, fill, $ } from './dom.js';
 import { getStarMap, STAR_MAPS, GRID_INFO } from '../data/starMaps.js';
 import { getType } from '../core/types.js';
-import { requestThumbnail } from '../render/thumbnails.js';
+import { requestThumbnail, thumbnailKey } from '../render/thumbnails.js';
 import { mulberry32 } from '../core/rng.js';
 import { openNewPlanetDialog } from './dialogs.js';
 
@@ -74,7 +74,7 @@ export class StarMap {
     if (planetId && this.nodes().has(planetId)) this.focusNode(planetId);
     else if (area) this.fitArea(area);
     else this.fitAll();
-    history.replaceState(null, '', `#map=${encodeURIComponent(mapId)}${area ? `&area=${encodeURIComponent(area)}` : ''}`);
+    history.replaceState(null, '', `#map=${encodeURIComponent(mapId)}${area ? `&area=${encodeURIComponent(area)}` : ''}${this.app.playerLocked ? '&view=player' : ''}`);
     this.app.ui.updateToolbar();
     this.render();
   }
@@ -84,7 +84,7 @@ export class StarMap {
     this.el.hidden = true;
     this.tip.hidden = true;
     this.editMode = false;
-    if (this.app.planet) history.replaceState(null, '', `#planet=${encodeURIComponent(this.app.planet.id)}`);
+    if (this.app.planet) history.replaceState(null, '', this.app.planetHash(this.app.planet.id));
     this.app.ui.updateToolbar();
     this.app.requestRender();
   }
@@ -131,7 +131,12 @@ export class StarMap {
   areaPoints(area, nodes) {
     const pts = [];
     const ids = new Set(area.members || []);
-    for (const p of this.planets()) if (p.sector === area.name || p.map.area === area.id) ids.add(p.id);
+    const layout = this.app.store.mapLayout(this.mapId);
+    for (const p of this.planets()) {
+      // A world dragged out of the "Location unknown" pen no longer belongs to it.
+      const inPen = p.map.area === area.id && !layout[p.id];
+      if (p.sector === area.name || inPen) ids.add(p.id);
+    }
     for (const id of ids) {
       const n = nodes.get(id);
       if (n) pts.push([n.x, n.y]);
@@ -157,7 +162,8 @@ export class StarMap {
   fitBounds(x0, y0, x1, y1) {
     const pad = 60;
     const panel = document.getElementById('starmapPanel');
-    const wide = this.width > 820 && panel;
+    // Same rule as the CSS: below 820px of viewport the panel becomes a bottom sheet.
+    const wide = panel && !window.matchMedia('(max-width: 820px)').matches;
     const left = wide ? panel.offsetLeft + panel.offsetWidth : 0;
     // On phones the panel sits at the bottom instead.
     const bottom = !wide && panel ? panel.offsetHeight + 16 : 0;
@@ -224,7 +230,7 @@ export class StarMap {
   }
 
   thumb(planet) {
-    const key = `${planet.id}|${planet.typeId}|${planet.seed}|${JSON.stringify(planet.params)}`;
+    const key = `${planet.id}|${thumbnailKey(planet, 48)}`;
     const cached = this.thumbs.get(planet.id);
     if (cached && cached.key === key) return cached.img;
     const entry = { key, img: null };
@@ -475,7 +481,8 @@ export class StarMap {
       ctx.font = `18px ${FONT}`;
       ctx.fillStyle = '#ffd23f';
       ctx.textAlign = 'center';
-      ctx.fillText('Edit layout: drag systems to move them', W / 2, H - 18);
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Edit layout: drag systems to move them, click empty space to add a planet', W / 2, 22);
     }
   }
 
@@ -590,7 +597,7 @@ export class StarMap {
     let best = null, bestD = Infinity;
     for (const hit of this.hits) {
       const d = Math.hypot(hit.x - sx, hit.y - sy);
-      if (d <= hit.r && d < bestD) { best = hit; bestD = d; }
+      if (d <= hit.r && d <= bestD) { best = hit; bestD = d; }
     }
     return best;
   }
@@ -603,16 +610,41 @@ export class StarMap {
       const r = c.getBoundingClientRect();
       return [e.clientX - r.left, e.clientY - r.top];
     };
+    // Every finger or mouse currently pressed, so two fingers can pinch-zoom.
+    const down = new Map();
+    let pinch = null;
+    const pinchState = () => {
+      const [a, b] = [...down.values()];
+      return { dist: Math.hypot(a[0] - b[0], a[1] - b[1]), mid: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] };
+    };
+
     c.addEventListener('contextmenu', (e) => e.preventDefault());
     c.addEventListener('pointerdown', (e) => {
       c.setPointerCapture(e.pointerId);
       const [sx, sy] = local(e);
+      down.set(e.pointerId, [sx, sy]);
+      if (down.size === 2) {
+        this.pointer = null;
+        pinch = pinchState();
+        return;
+      }
+      if (down.size > 2) return;
       const hit = this.hitAt(sx, sy);
       const draggable = hit && this.editMode && !this.app.playerView;
-      this.pointer = { id: e.pointerId, sx, sy, last: [sx, sy], moved: false, hit, drag: draggable ? hit.node : null };
+      this.pointer = { id: e.pointerId, button: e.button, touch: e.pointerType === 'touch', sx, sy, last: [sx, sy], moved: false, hit, drag: draggable ? hit.node : null };
     });
     c.addEventListener('pointermove', (e) => {
       const [sx, sy] = local(e);
+      if (down.has(e.pointerId)) down.set(e.pointerId, [sx, sy]);
+      if (pinch && down.size === 2) {
+        const now = pinchState();
+        this.cam.x -= (now.mid[0] - pinch.mid[0]) / this.cam.s;
+        this.cam.y -= (now.mid[1] - pinch.mid[1]) / this.cam.s;
+        if (pinch.dist > 0) this.zoomAt(now.mid[0], now.mid[1], now.dist / pinch.dist);
+        pinch = now;
+        this.render();
+        return;
+      }
       const p = this.pointer;
       if (!p) {
         const hit = this.hitAt(sx, sy);
@@ -626,6 +658,7 @@ export class StarMap {
         else this.tip.hidden = true;
         return;
       }
+      if (p.id !== e.pointerId) return;
       if (Math.hypot(sx - p.sx, sy - p.sy) > 4) p.moved = true;
       if (!p.moved) return;
       this.tip.hidden = true;
@@ -643,16 +676,34 @@ export class StarMap {
       this.render();
     });
     const end = (e) => {
+      down.delete(e.pointerId);
+      if (pinch) {
+        if (down.size < 2) pinch = null;
+        this.pointer = null;
+        return;
+      }
       const p = this.pointer;
+      if (!p || p.id !== e.pointerId) return;
       this.pointer = null;
-      if (!p || p.id !== e.pointerId || e.type === 'pointercancel') return;
       c.style.cursor = 'grab';
-      if (p.moved || !p.hit) return;
+      // Only a plain left click or tap opens things; other buttons just pan.
+      if (e.type === 'pointercancel' || p.moved || p.button !== 0) return;
+      if (!p.hit) {
+        this.tip.hidden = true;
+        if (this.editMode && !this.app.playerView) this.createAt(p.sx, p.sy);
+        return;
+      }
+      // Touch has no hover, so the first tap on a star or pulsar shows its notes.
+      if (p.touch && p.hit.node.kind === 'feature') {
+        this.showTip(p.hit, p.sx, p.sy);
+        return;
+      }
       this.clickNode(p.hit.node);
     };
     c.addEventListener('pointerup', end);
     c.addEventListener('pointercancel', end);
     c.addEventListener('pointerleave', () => {
+      if (this.pointer) return;
       this.tip.hidden = true;
       if (this.hover) {
         this.hover = null;
@@ -668,13 +719,19 @@ export class StarMap {
     }, { passive: false });
     c.addEventListener('dblclick', (e) => {
       const [sx, sy] = local(e);
-      if (!this.hitAt(sx, sy)) this.zoomAt(sx, sy, 2);
+      if (!this.hitAt(sx, sy) && !this.editMode) this.zoomAt(sx, sy, 2);
     });
     new ResizeObserver(() => {
       if (!this.isOpen) return;
       this.resize();
       this.render();
     }).observe(this.el);
+  }
+
+  // GM in Edit layout: click empty space to put a new planet there.
+  createAt(sx, sy) {
+    const [x, y] = this.toMap(sx, sy);
+    openNewPlanetDialog(this.app, { region: this.map.name, sector: '', map: { id: this.mapId, x: Math.round(x), y: Math.round(y) }, name: '' });
   }
 
   clickNode(n) {
